@@ -1,0 +1,13 @@
+#version 410
+
+in vec2 vert;
+
+out vec2 pixCoord;
+uniform vec2 screenSize;
+
+
+void main(void) {
+	// convert pixels coords to normalized space (-1, 1);
+	pixCoord = vert;
+	gl_Position = vec4((vert.x / screenSize.x) * 2 - 1, (vert.y / screenSize.y) * 2 - 1, 1, 1);
+}

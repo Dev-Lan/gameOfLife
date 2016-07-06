@@ -1,0 +1,176 @@
+#version 410
+
+in vec2 pixCoord;
+
+uniform vec2 screenSize;
+uniform sampler2D tex;
+uniform bool displayTexture;
+uniform bool displayBitTexture;
+uniform bool edgeLoops;
+uniform int tailPower; // max seven
+
+out vec4 fragColor;
+
+void increment(in vec4 color, inout int r, inout int g, inout int b) {
+	r = r + int(floor(color.r));
+	g = g + int(floor(color.g));
+	b = b + int(floor(color.b));
+}
+
+void loopTexCoords(inout vec2 t) {
+	t.x = t.x - floor(t.x);
+	t.y = t.y - floor(t.y);
+}
+
+
+void main(void) {
+	if (displayTexture) {
+		vec4 c;
+		c = texture(tex, vec2( (pixCoord.x ) / screenSize.x, (pixCoord.y ) / screenSize.y ));
+		fragColor = c;
+		return;
+	}
+
+	if (displayBitTexture) {
+		vec4 c;
+		c = texture(tex, vec2( (pixCoord.x ) / screenSize.x, (pixCoord.y ) / screenSize.y ));
+		fragColor = vec4(round(c.r), round(c.g), round(c.b), 1);
+		return;
+	}
+
+
+	int rx, gx, bx;
+	rx = gx = bx = 0;
+
+	// 1|2|3
+	// 4|5|6
+	// 7|8|9
+	vec4 tmpCol;
+	vec4 cc; // center color
+	vec2 nCoord; // neighbor coordinate in texture coords
+	// if edge mode is overlap
+	if (edgeLoops) {
+		// 1
+		nCoord = vec2( (pixCoord.x - 1) / screenSize.x, (pixCoord.y - 1) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 2
+		nCoord = vec2( (pixCoord.x) / screenSize.x, (pixCoord.y - 1) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 3
+		nCoord = vec2( (pixCoord.x + 1) / screenSize.x, (pixCoord.y - 1) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 4
+		nCoord = vec2( (pixCoord.x - 1) / screenSize.x, (pixCoord.y) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 5
+		cc = texture(tex, vec2( (pixCoord.x ) / screenSize.x, (pixCoord.y ) / screenSize.y ));
+		// do not increment here, since we do not want to count self
+		// 6
+		nCoord = vec2( (pixCoord.x + 1) / screenSize.x, (pixCoord.y) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 7
+		nCoord = vec2( (pixCoord.x - 1) / screenSize.x, (pixCoord.y + 1) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 8
+		nCoord = vec2( (pixCoord.x) / screenSize.x, (pixCoord.y + 1) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 9
+		nCoord = vec2( (pixCoord.x + 1) / screenSize.x, (pixCoord.y + 1) / screenSize.y );
+		loopTexCoords(nCoord);
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+	} else {
+		// 1
+		nCoord = vec2( (pixCoord.x - 1) / screenSize.x, (pixCoord.y - 1) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 2
+		nCoord = vec2( (pixCoord.x) / screenSize.x, (pixCoord.y - 1) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 3
+		nCoord = vec2( (pixCoord.x + 1) / screenSize.x, (pixCoord.y - 1) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 4
+		nCoord = vec2( (pixCoord.x - 1) / screenSize.x, (pixCoord.y) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 5
+		cc = texture(tex, vec2( (pixCoord.x ) / screenSize.x, (pixCoord.y ) / screenSize.y ));
+		// do not increment here, since we do not want to count self
+		// 6
+		nCoord = vec2( (pixCoord.x + 1) / screenSize.x, (pixCoord.y) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 7
+		nCoord = vec2( (pixCoord.x - 1) / screenSize.x, (pixCoord.y + 1) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 8
+		nCoord = vec2( (pixCoord.x) / screenSize.x, (pixCoord.y + 1) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+		// 9
+		nCoord = vec2( (pixCoord.x + 1) / screenSize.x, (pixCoord.y + 1) / screenSize.y );
+		tmpCol = texture(tex, nCoord);
+		increment(tmpCol, rx, gx, bx);
+	}
+	int minCount, maxCount;
+	minCount = 2;
+	maxCount = 3;
+	float tailDiminish;
+	tailDiminish = 1.0 - (1.0 / pow(2,tailPower));
+	// const float tailCutoff = 0.1875;
+	const float tailCutoff = 0.0;//25; // todo make this vary based on tailDiminish
+	// const float tailCutoff = 0.0625;
+	float r,g,b; // final state
+	if (minCount <= rx && rx <= maxCount && cc.r == 1.0) {
+		r = 1;
+	} else if (rx == maxCount && cc.r < 1.0) {
+		r = 1;
+	} else {
+		r = tailDiminish * cc.r - (1.0 / 256.0);
+		if (r <= tailCutoff) {
+			r = 0;
+		}
+	}
+
+	if (minCount <= gx && gx <= maxCount && cc.g == 1.0) {
+		g = 1;
+	} else if (gx == maxCount && cc.g < 1.0) {
+		g = 1;
+	} else {
+		g = tailDiminish * cc.g - (1.0 / 256.0);
+		if (g <= tailCutoff) {
+			g = 0;
+		}
+	}
+
+	if (minCount <= bx && bx <= maxCount && cc.b == 1.0) {
+		b = 1;//cc.b;
+	} else if (bx == maxCount && cc.b < 1.0) {
+		b = 1;
+	} else {
+		b = tailDiminish * cc.b - (1.0 / 256.0);
+		if (b <= tailCutoff) {
+			b = 0;
+		}
+	}
+
+	fragColor = vec4(r,g,b,1);
+}
